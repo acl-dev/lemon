@@ -1,0 +1,22 @@
+<!--std::string hello(const std::string &hello,const std::string &name, std::vector<std::vector> &table)-->
+<HTML>
+<HEAD>
+<META NAME="GENERATOR" Content="Microsoft Visual Studio">
+<TITLE></TITLE>
+</HEAD>
+<BODY>
+    hello {{hello}} 
+    {%if name %} name: {{name}}{%endif%}
+    <table>
+        {%for items in table%}
+        <tr>
+            {%for item in items%}
+            <td>
+                {{item}}
+            </td>
+            {%endfor%}
+        </tr>
+        {%endfor%}
+    </table>
+</BODY>
+</HTML>
