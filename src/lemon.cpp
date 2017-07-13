@@ -46,11 +46,19 @@ lemon::lemon()
 {
 
 }
-
+lemon::container_t::container_t(const container_t &other)
+{
+    field_= new field(*other.field_);
+}
+lemon::container_t::~container_t()
+{
+    if(field_)
+        delete field_;
+}
 bool lemon::parse_template(const std::string &file_path)
 {
     if (!file_.open_read(file_path.c_str()))
-        return;
+        return false;
     try
     {
         parse_template();
@@ -149,8 +157,8 @@ lemon::token_t lemon::get_next_token()
     }
     else
     {
-        std::string dilimiters = " <>{}()[]%!?:,\\/.\r\t\n\"'`=-";
-        str = next_token(dilimiters);
+        std::string delimiters = " <>{}()[]%!?:,\\/.\r\t\n\"'`=-";
+        str = next_token(delimiters);
         t.str_ = str;
     }
 
@@ -372,27 +380,130 @@ lemon::token_t lemon::get_next_token()
     token_ = t;
     return t;
 }
+std::string lemon::get_container_str()
+{
+    std::string code;
 
+    if(get_next_token().type_ != token_t::e_less)
+        throw syntax_error("not find < ");
+
+    int count = 1;
+    for (size_t i = 0; i < line_buffer_.size(); ++i)
+    {
+        char ch = line_buffer_[i];
+        code.push_back(ch);
+        if(ch == '<')
+            count++;
+        else if(ch == '>')
+        {
+            count --;
+            if(count == 0)
+                return code;
+        }
+    }
+    return  code;
+}
+lemon::field lemon::parse_container()
+{
+    field f;
+    token_t t = get_next_token();
+    if(t.type_ == token_t::e_std_string)
+    {
+        f.type_ = field::e_std_string;
+        f.str_ = "std::string";
+    }
+    else if (t.type_ == token_t::e_std_vector)
+    {
+        f.str_ = get_container_str();
+        f.type_ = field::e_vector;
+        f.container_.field_ = new field(parse_container());
+    }
+    else if (t.type_ == token_t::e_std_list)
+    {
+        f.str_ = get_container_str();
+        f.type_ = field::e_list;
+        f.container_.field_ = new field(parse_container());
+    }
+    return f;
+}
+static inline std::string get_param_str(const std::string &str)
+{
+    int count = 0;
+    for (size_t i = 0; i <str.size() ; ++i)
+    {
+        char ch = str[i];
+        if (ch == ',')
+        {
+            if(count == 0)
+                return str.substr(0, i);
+        }
+        else if(ch == ')')
+        {
+            return str.substr(0, i);
+        }
+        else if(ch == '<')
+        {
+            count ++;
+        }
+        else if(ch == '>')
+        {
+            count --;
+        }
+    }
+    return str;
+}
+
+static inline std::string get_type_str(const std::string &str)
+{
+    for (int i = (int)str.size() -1; i >= 0; --i)
+    {
+        char ch = str[i];
+        if(ch == ' '|| ch == '&')
+        {
+            return str.substr(0, (size_t)( i - 1 ));
+        }
+        else if(ch == '>')
+        {
+            return str.substr(0, (size_t)i);
+        }
+    }
+    return str;
+}
 lemon::field lemon::parse_param()
 {
     lemon::field f;
 
-    std::string str1 = get_string(",");
-    std::string str2 = get_string(")");
-    f.str_ = str1;
-    if (str1.size() > str2.size())
-        f.str_ = str2;
+    f.str_ = get_param_str(line_buffer_);
+    f.type_str_ = get_type_str(f.str_);
 
     token_t t = get_next_token();
     if(t.type_ == token_t::e_const)
+    {
         t = get_next_token();
+    }
     if (t.type_ == token_t::e_std_string)
-        f.type_ = field::e_string;
+    {
+        f.type_ = field::e_std_string;
+    }
     else if (t.type_ == token_t::e_std_list)
     {
 
+        token_t t = get_next_token();
+        if(t.type_ != token_t::e_less)
+            throw syntax_error("not find <");
+        f.container_.type_ = container_t::e_list;
+        f.container_.field_ = new field(parse_container());
+
+    }else if(t.type_ == token_t::e_std_vector)
+    {
+        token_t t = get_next_token();
+        if(t.type_ != token_t::e_less)
+            throw syntax_error("not find <");
+        f.container_.type_ = container_t::e_list;
+        f.container_.field_ = new field(parse_container());
     }
 }
+
 lemon::field lemon::parse_return()
 {
     token_t t = get_next_token();
@@ -414,7 +525,7 @@ void lemon::parse_interface()
 
     while(t.type_ != token_t::e_comment_end)
     {
-
+        template_.interface_.params_.push_back(parse_param());
     }
 }
 void lemon::parse_template()
@@ -423,11 +534,6 @@ void lemon::parse_template()
     token_t t = get_next_token();
     if (t.type_ != token_t::e_comment_begin)
         throw syntax_error("error not find template interface.");
-    std::string str = get_string("-->");
-
-    do
-    {
-        
-
-    } while (true);
+    template_.interface_.str_ = get_string("-->");
+    parse_interface();
 }

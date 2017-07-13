@@ -75,22 +75,64 @@ private:
     };
     
     struct entry;
+    struct field;
+
+    struct container_t
+    {
+        container_t()
+                :type_(e_void),
+                 field_(NULL)
+        {
+
+        }
+        container_t(const container_t &other);
+        ~container_t();
+        /// todo
+
+
+        typedef enum type
+        {
+            e_void,
+            e_vector,
+            e_list,
+            e_map,
+            e_set,
+            e_field,
+            e_obj,
+
+        } type_t;
+        type_t type_;
+        field *field_;
+        std::string str_;
+    };
+
     struct field
     {
         field()
-            :line_(0)
+            :line_(0),
+             container_(NULL)
         {
 
         }
         typedef enum type
         {
+            e_char,
+            e_unsigned_char,
+            e_short,
+            e_unsigned_shot,
+            e_int,
+            e_unsigned_int,
+            e_long,
+            e_unsigned_long,
+            e_long_long,
+            e_unsigned_long_long,
+
             e_std_string,
             e_acl_string,
-            e_int,
-            e_int64,
+
             e_float,
-            e_string,
             e_double,
+
             e_list,
             e_vector,
             e_map,
@@ -105,8 +147,9 @@ private:
         std::string name_;
         
         std::string str_;
+        std::string type_str_;
 
-        std::string template_;
+        container_t container_;
     };
 
     struct entry
@@ -117,8 +160,8 @@ private:
     };
     struct interface_t
     {
-        std::string str;
         std::string name_;
+        std::string str_;
         field return_;
         std::vector<field> params_;
     };
@@ -140,6 +183,8 @@ public:
     token_t get_next_token();
 private:
     void parse_template();
+    std::string get_container_str();
+    field parse_container();
     field parse_return();
     field parse_param();
     void parse_interface();
