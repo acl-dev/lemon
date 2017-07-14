@@ -1,4 +1,4 @@
-<!--std::string hello(const std::string &hello,const std::string &name, std::vector<std::vector> &table)-->
+<!--std::string hello(const std::string &hello,const std::string &name, std::vector<std::vector<std::string> > &table)-->
 <HTML>
 <HEAD>
 <META NAME="GENERATOR" Content="Microsoft Visual Studio">

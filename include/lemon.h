@@ -23,8 +23,9 @@ private:
             e_code_begin,      //  {%
             e_double_open_brace,  //  {{
             e_close_brace,     //  }
+            e_modulus,         // %
             e_code_end,        //  %}}
-            e_double_close_quote, //  }}
+            e_double_close_brace, //  }}
             e_forward_slash,   //  /
             e_and,             //  &
             e_if,              //  if
@@ -77,40 +78,14 @@ private:
     struct entry;
     struct field;
 
-    struct container_t
-    {
-        container_t()
-                :type_(e_void),
-                 field_(NULL)
-        {
-
-        }
-        container_t(const container_t &other);
-        ~container_t();
-        /// todo
 
 
-        typedef enum type
-        {
-            e_void,
-            e_vector,
-            e_list,
-            e_map,
-            e_set,
-            e_field,
-            e_obj,
-
-        } type_t;
-        type_t type_;
-        field *field_;
-        std::string str_;
-    };
 
     struct field
     {
+
         field()
-            :line_(0),
-             container_(NULL)
+            :line_(0)
         {
 
         }
@@ -148,8 +123,6 @@ private:
         
         std::string str_;
         std::string type_str_;
-
-        container_t container_;
     };
 
     struct entry
@@ -171,7 +144,7 @@ private:
         interface_t interface_;
     };
     std::string next_token(const std::string &delimiters);
-    std::string get_string(int len);
+    std::string get_string(size_t len);
     std::string get_string(const std::string &delimiters);
 
     void move_buffer(int offset);
@@ -180,15 +153,26 @@ private:
 public:
     lemon();
     bool parse_template(const std::string &file_path);
-    token_t get_next_token();
+    token_t get_next_token(const std::string &skipstr=" \r\n\t");
 private:
+    std::string get_type(const std::string &str);
+    std::string parse_if();
+    std::string parse_for();
+    void parse_html();
     void parse_template();
     std::string get_container_str();
-    field parse_container();
     field parse_return();
     field parse_param();
+    std::string get_iterator();
     void parse_interface();
 private:
+    struct stack
+    {
+        std::string name_;
+        std::string type_;
+    };
+    std::vector<stack> stack_;
+
     token_t token_;
     acl::ifstream file_;
     std::string current_line_;
@@ -199,4 +183,5 @@ private:
     std::vector<entry> entrys_;
 
     template_t template_;
+    int iterators_;
 };
