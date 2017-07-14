@@ -7,7 +7,7 @@ int main()
 {
     lemon lm;
 
-    lm.parse_template("F:\\fork\\acl-dev\\lemon\\demo\\hello.lm");
+    lm.parse_template("hello.lm");
 
     return 0;
 }

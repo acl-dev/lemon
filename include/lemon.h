@@ -20,12 +20,12 @@ private:
             e_comment_end,     //  -->
             e_gt,              //  >
             e_open_brace,      //  {
-            e_code_begin,      //  {%
-            e_double_open_brace,  //  {{
+            e_open_block,      //  {%
+            e_open_variable,   //  {{
             e_close_brace,     //  }
-            e_modulus,         // %
-            e_code_end,        //  %}}
-            e_double_close_brace, //  }}
+            e_modulus,         //  %
+            e_close_block,     //  %}}
+            e_close_variable,  //  }}
             e_forward_slash,   //  /
             e_and,             //  &
             e_if,              //  if
@@ -156,9 +156,10 @@ public:
     token_t get_next_token(const std::string &skipstr=" \r\n\t");
 private:
     std::string get_type(const std::string &str);
+    std::string get_code();
     std::string parse_if();
     std::string parse_for();
-    void parse_html();
+    std::string parse_html();
     void parse_template();
     std::string get_container_str();
     field parse_return();
@@ -184,4 +185,6 @@ private:
 
     template_t template_;
     int iterators_;
+
+    std::string file_path_;
 };
