@@ -27,7 +27,7 @@ private:
             e_close_block,     //  %}}
             e_close_variable,  //  }}
             e_forward_slash,   //  /
-            e_and,             //  &
+            e_ampersand,       //  &
             e_if,              //  if
             e_else,            //  else,
             e_elif,            //  else if
@@ -35,7 +35,9 @@ private:
             e_for,             //  for
             e_in,              //  in
             e_endfor,          //  endfor
-
+            e_and,             //  end 
+            e_not,             //  not
+            e_or,              //  or
 
             e_const,           //  const
             e_std_string,      //  std::list
@@ -155,9 +157,18 @@ public:
     bool parse_template(const std::string &file_path);
     token_t get_next_token(const std::string &skipstr=" \r\n\t");
 private:
-    std::string get_type(const std::string &str);
+    void pop_stack();
+    void push_stack(const std::string &name, const std::string &type);
+    void push_stack_size(int size);
+    void push_back(const token_t &value);
+    std::string get_type(const std::string &name);
     std::string get_code();
+    field::type get_field_type(const std::string &type);
+    std::string gen_bool_code(const std::string &item);
+    std::string gen_if_code();
     std::string parse_if();
+    std::string get_for_items();
+    std::string gen_for_code();
     std::string parse_for();
     std::string parse_html();
     void parse_template();
@@ -173,6 +184,7 @@ private:
         std::string type_;
     };
     std::vector<stack> stack_;
+    std::vector<int> stack_size_;
 
     token_t token_;
     acl::ifstream file_;

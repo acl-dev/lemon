@@ -6,6 +6,8 @@
 #include "acl_cpp/lib_acl.hpp"
 #include "lemon.h"
 
+#define br std::string("\n")
+
 struct syntax_error:std::logic_error
 {
     syntax_error(const std::string &error = "syntax_error")
@@ -142,6 +144,10 @@ std::string lemon::next_token(const std::string &delimiters)
     line_buffer_ = line_buffer_.substr(buffer.size());
     return buffer;
 }
+void lemon::push_back(const lemon::token_t &value)
+{
+    tokens_.push_back(value);
+}
 lemon::token_t lemon::get_next_token(const std::string &skip_str)
 {
 
@@ -251,7 +257,7 @@ lemon::token_t lemon::get_next_token(const std::string &skip_str)
     }
     else if (str == "&")
     {
-        t.type_ = token_t::e_and;
+        t.type_ = token_t::e_ampersand;
     }
     else if (str == "if")
     {
@@ -284,6 +290,18 @@ lemon::token_t lemon::get_next_token(const std::string &skip_str)
     else if (str == "endfor")
     {
         t.type_ = token_t::e_endfor;
+    }
+    else if (str == "and")
+    {
+        t.type_ = token_t::e_and;
+    }
+    else if (str == "or")
+    {
+        t.type_ = token_t::e_or;
+    }
+    else if (str == "not")
+    {
+        t.type_ = token_t::e_not;
     }
     else if (str == ":")
     {
@@ -544,7 +562,7 @@ lemon::field lemon::parse_param()
     }
     //get name
     t = get_next_token();
-    if (t.type_ == token_t::e_and)
+    if (t.type_ == token_t::e_ampersand)
         t = get_next_token();
     f.name_ = t.str_;
     t = get_next_token();
@@ -594,16 +612,17 @@ std::string lemon::get_iterator()
     sprintf(buffer,"it%d",++iterators_);
     return buffer;
 }
-std::string lemon::get_type(const std::string &str)
+std::string lemon::get_type(const std::string &name)
 {
-    for (size_t i = 0; i < stack_.size(); i++)
+    std::vector<stack>::reverse_iterator rit = stack_.rbegin();
+    for (; rit != stack_.rend(); ++rit)
     {
-        if (stack_[i].name_ == str)
-            return stack_[i].type_;
+        if (rit->name_ == name)
+            return rit->type_;
     }
+    throw syntax_error("not find " + name);
     return "";
 }
-#define br std::string("\n")
 
 inline std::string skip_all(const std::string &str,
                             const std::string &skip_str)
@@ -671,9 +690,8 @@ static inline std::string get_second_type(const std::string &str)
             if(count == 1)
             {
                 if(skip_all(buffer," \r\t\n") != "std::map")
-                {
                     throw syntax_error("not find std::map ");
-                }
+                
                 buffer.clear();
                 continue;
             }
@@ -691,20 +709,17 @@ static inline std::string get_second_type(const std::string &str)
         }
         else if(ch == '>')
         {
-            buffer.push_back(ch);
             count --;
-
             if(count ==0)
-            {
                  break;
-            }
+
+            buffer.push_back(ch);
         }
         else
         {
             if(ch == ' ' && buffer.empty())
-            {
                 continue;
-            }
+
             buffer.push_back(ch);
         }
     }
@@ -895,28 +910,143 @@ struct code_buffer
     std::string line_;
     std::string code_;
 };
+static inline std::vector<std::string> 
+    split(const std::string &str, const std::string &delimiters)
+{
+    std::vector<std::string> tokens;
+    std::string token;
 
+    for (size_t i = 0l; i< str.size(); ++i)
+    {
+        char ch = str[i];
+        if (delimiters.find(ch) == std::string::npos)
+        {
+            token.push_back(ch);
+        }
+        else
+        {
+            if (token.empty())
+                continue;
+            tokens.push_back(token);
+            token.clear();
+        }
+    }
+    if (!token.empty())
+        tokens.push_back(token);
+    return tokens;
+}
+lemon::field::type 
+    lemon::get_field_type(const std::string &type)
+{
+    std::vector<std::string> tokens = split(type," \r\n\t<,>");
+    if (tokens.empty())
+        throw syntax_error("error type "+ type);
+
+    if (tokens[0] == "std::string")
+    {
+        return field::e_std_string;
+    }
+    else if (tokens[0] == "std::vector")
+    {
+        return field::e_vector;
+    }
+    else if (tokens[0] == "std::list")
+    {
+        return field::e_list;
+    }
+    else if (tokens[0] == "int")
+    {
+        return field::e_int;
+    }
+    else if (tokens[0] == "float")
+    {
+        return field::e_float;
+    }
+    else if (tokens[0] == "double")
+    {
+        return field::e_double;
+    }
+    throw syntax_error("not support type: "+tokens[0]);
+    return field::e_char;
+}
 std::string lemon::get_code()
 {
+    return "";
+}
+std::string lemon::gen_bool_code(const std::string &item)
+{
+    std::string item_type = get_type(item);
+    field::type type = get_field_type(item_type);
+    if (type == field::e_vector ||
+        type == field::e_list ||
+        type == field::e_map||
+        type == field::e_std_string)
+    {
+        return "!"+item + ".empty()";
+    }
+    else if (type == field::e_int)
+    {
+        return item +" != 0";
+    }
+    throw syntax_error("not support type: "+item_type);
+    return "";
+}
+std::string lemon::gen_if_code()
+{
+    std::string code;
+    std::string last_code;
+    std::string item;
+    bool flag = false;
 
+    code += tab() + "if(";
+
+    do
+    {
+        token_t t = get_next_token();
+        if (t.type_ == token_t::e_close_block)
+        {
+            if (item.empty())
+                throw syntax_error("not find variable ");
+            code += gen_bool_code(item);
+            if (flag)
+                code += ")";
+            break;
+        }
+        else if (t.type_ == token_t::e_and)
+        {
+            flag = true;
+            code += "(" + gen_bool_code(item) + ")&&(";
+            item.clear();
+        }
+        else if (t.type_ == token_t::e_or)
+        {
+            flag = true;
+            code += "(" + gen_bool_code(item) + ")||(";
+            item.clear();
+        }
+        else
+        {
+            item += t.str_;
+        }
+
+    } while (true);
+
+    code += ")" + br;
+    code += tab() + "{" + br;
+    tab_++;
+    return code;
 }
 
 std::string lemon::parse_if()
 {
     code_buffer code;
-    std::string item = get_next_token().str_;
-    code += tab() + "if("+item+")"+br;
-    code += tab() + "{"+br;
-    tab_++;
 
-    token_t t = get_next_token();
-    if (t.type_ != token_t::e_close_block)
-        throw syntax_error("not find %}");
-
+    code += gen_if_code();
     code += tab() + "code += \"";
+
     do
     {
-        t = get_next_token("");
+        token_t t = get_next_token("");
 
         if (t.type_ == token_t::e_open_variable)
         {
@@ -1006,36 +1136,136 @@ std::string lemon::parse_if()
         }
 
     } while (true);
+
+    return code;
+}
+// {% for key, value in items%}
+// {% for key in items%}
+std::string lemon::get_for_items()
+{
+    std::string buffer;
+    
+    do{
+        token_t t = get_next_token();
+        if (t.type_ == token_t::e_close_block)
+            break;
+        buffer += t.str_;
+    }while (true);
+    return buffer;
+}
+
+void lemon::push_stack(const std::string &name, const std::string &type)
+{
+    stack s;
+    s.name_ = name;
+    s.type_ = type;
+    stack_.push_back(s);
+}
+
+void lemon::push_stack_size(int size)
+{
+    stack_size_.push_back(size);
+}
+
+void lemon::pop_stack()
+{
+    int size = stack_size_.back();
+    stack_size_.pop_back();
+
+    for (int i = 0; i < size; i++)
+        stack_.pop_back();
+}
+
+std::string lemon::gen_for_code()
+{
+    std::string code;
+
+    std::string it = get_iterator();
+    token_t t1 = get_next_token();
+    token_t t2 = get_next_token();
+
+    //{% for k, v in items %}
+    if (t2.type_ == token_t::e_comma)
+    {
+        token_t t3 = get_next_token();
+        if (get_next_token().type_ != token_t::e_in)
+            throw syntax_error("not find in ");
+
+        std::string items = get_for_items();
+        std::string items_type = get_type(items);
+
+
+        code += tab() + items_type + "::const_iterator " + it;
+        code += " = " + items + ".begin();" + br;
+        code += tab() + "for (; " + it + " != ";
+        code += items + ".end(); ++" + it + ")" + br;
+        code += tab() + "{" + br;
+        tab_++;
+
+
+        std::string key = t1.str_;
+        std::string value = t3.str_;
+
+        std::string key_type = get_first_type(items_type);
+        std::string value_type = get_second_type(items_type);
+
+        code += tab() + "const " + key_type + " &" + key;
+        code += " = " + it + "->first;" + br;
+        code += tab() + "const " + value_type + " &" + value;
+        code += " = " + it + "->second;" + br;
+
+        push_stack(key, key_type);
+        push_stack(value, value_type);
+        push_stack_size(2);
+    }
+    //{% for v in items %}
+    else
+    {
+        if (t2.type_ != token_t::e_in)
+            throw syntax_error("not find in ");
+
+        std::string items = get_for_items();
+        std::string items_type = get_type(items);
+
+        code += tab() + items_type + "::const_iterator " + it;
+        code += " = " + items + ".begin();" + br;
+        code += tab() + "for (; " + it + " != ";
+        code += items + ".end(); ++" + it + ")" + br;
+        code += tab() + "{" + br;
+        tab_++;
+
+        if (check_list(items_type) || check_vector(items_type))
+        {
+            std::string item = t1.str_;
+            std::string item_type = get_next_type(items_type);
+
+            code += tab() + "const " + item_type + " &" + item;
+            code += " = *" + it + ";" + br;
+
+            push_stack(item, item_type);
+            push_stack_size(1);
+        }
+        else if (check_map(items_type))
+        {
+            std::string value = t1.str_;
+            std::string value_type = get_second_type(items_type);
+            code += tab() + "const " + value_type + " &" + value;
+            code +=" = " + it + "->second;" + br;
+
+            push_stack(value, value_type);
+            push_stack_size(1);
+        }
+    }
+
     return code;
 }
 std::string lemon::parse_for()
 {
     code_buffer code;
 
-    std::string item = get_next_token().str_;
-    if (get_next_token().type_ != token_t::e_in)
-        throw syntax_error("not find in ");
-    std::string items = get_next_token().str_;
-    std::string items_type = get_type(items);
-    std::string item_type = get_next_type(items_type);
-    if (items_type.empty())
-        throw syntax_error("not find " + items);
-    std::string it = get_iterator();
-    code += tab() + items_type + "::const_iterator " + it ;
-    code += " = " + items + ".begin();"+br;
-    code += tab() + "for (; " + it + " != " + items + ".end(); ++" + it + ")" + br;
-    code += tab() + "{" + br;
-    tab_++;
-    code += tab() + "const " + item_type + " &" + item + " = *" + it + ";"+br;
+    code += gen_for_code();
     code += tab() + "code += \"";
-    stack s;
-    s.name_ = item;
-    s.type_ = item_type;
-    stack_.push_back(s);
-
-    if (get_next_token().type_ != token_t::e_close_block)
-        throw syntax_error("not find %}");
-
+    
     do
     {
         token_t t = get_next_token("");
@@ -1067,6 +1297,8 @@ std::string lemon::parse_for()
                 code += "\";"+br;
                 tab_--;
                 code += tab() + "}"+br;
+                pop_stack();
+
                 if (get_next_token().type_ != token_t::e_close_block)
                     throw syntax_error("not find %}");
                 return code;
@@ -1222,5 +1454,5 @@ void lemon::parse_template()
     std::string file_path = file_path_;
     file_path += ".cpp";
     file.open(file_path.c_str(), std::ios::out);
-    file._M_write(code.c_str(), code.size());
+    file.write(code.c_str(), code.size());
 }
