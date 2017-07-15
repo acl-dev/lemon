@@ -3,6 +3,7 @@
     <words>
       <w>elif</w>
       <w>endfor</w>
+      <w>std::string</w>
     </words>
   </dictionary>
 </component>

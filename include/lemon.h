@@ -46,7 +46,12 @@ private:
             e_and,             //  end 
             e_not,             //  not
             e_or,              //  or
+            e_include,         //  include
+            e_block,           //  block
+            e_end_block,       //  end_block
+            e_extends,         //  extends
 
+            e_void,            //  void
             e_const,           //  const
             e_std_string,      //  std::list
             e_acl_string,      //  acl::string
@@ -91,12 +96,8 @@ private:
         std::string str_;
         int line_;
     };
-    
     struct entry;
     struct field;
-
-
-
 
     struct field
     {
@@ -160,6 +161,31 @@ private:
         std::string name_;
         interface_t interface_;
     };
+    struct lexer
+    {
+        token_t token_;
+        std::ifstream *file_;
+        std::string file_path_;
+        std::string current_line_;
+        std::string line_buffer_;
+        int line_;
+    };
+    struct block
+    {
+        std::string name_;
+        size_t      offset_;
+        std::string file_path_;
+        std::string current_line_;
+        std::string line_buffer_;
+        int line_;
+        std::ifstream *file_;
+    };
+    struct stack
+    {
+        std::string name_;
+        std::string type_;
+    };
+
     std::string next_token(const std::string &delimiters);
     std::string get_string(size_t len);
     std::string get_string(const std::string &delimiters);
@@ -169,9 +195,13 @@ private:
     void read_line();
 public:
     lemon();
+    ~lemon();
     bool parse_template(const std::string &file_path);
-    token_t get_next_token(const std::string &skipstr=" \r\n\t");
+
 private:
+    void assert_not_eof(const token_t &t);
+    token_t get_next_token(const std::string &skipstr=" \r\n\t");
+    token_t curr_token();
     void pop_stack();
     void push_stack(const std::string &name, const std::string &type);
     void push_stack_size(int size);
@@ -185,9 +215,13 @@ private:
     std::string gen_if_code();
     std::string parse_if();
     std::string get_for_items();
-    std::string gen_for_code();
     std::string parse_for();
     std::string parse_variable();
+    std::string parse_include();
+    block get_block(const std::string &name);
+    bool block_exist(const std::string &name);
+    std::string parse_block();
+    std::string parse_extends();
     std::string parse_html();
     void parse_template();
     std::string get_container_str();
@@ -198,29 +232,25 @@ private:
     void pop_for_item();
     void add_for_item(const std::string &item);
     std::string get_for_item();
-
+    void push_status(token_t::type_t type);
+    token_t::type_t pop_status();
+    token_t::type_t get_status();
+    std::string get_status_str();
+    std::string parse_open_block();
 private:
-    struct stack
-    {
-        std::string name_;
-        std::string type_;
-    };
+    std::vector<block>  blocks_;
+    std::vector<lexer*> lexers_;
+    lexer *lexer_;
+
     std::vector<stack> stack_;
     std::vector<int> stack_size_;
 
-    token_t token_;
-    std::ifstream file_;
-    std::string current_line_;
-    std::string line_buffer_;
-    int line_;
-
     std::list<token_t> tokens_;
     std::vector<entry> entrys_;
+    std::vector<token_t::type_t> status_;
 
     template_t template_;
     int iterators_;
-
-    std::string file_path_;
 
     std::set<std::string> filters_;
     std::vector<std::string> for_items_;

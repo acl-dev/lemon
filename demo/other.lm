@@ -1,0 +1,3 @@
+{%if name%}
+<p>{{hello}},I am {{name}} other.lm</p>
+{%endif%}

@@ -9,6 +9,7 @@
         {%if name|length > 0 %}
             name:{{name}}
         {%endif%}
+        <p> - - - - - - - - - </p>
         <table>
         {%for items in table%}
             <tr>
@@ -19,8 +20,11 @@
                     item: {{item}}
                 </td>
                 {%endfor%}
+                {%include "other.lm"%}
             </tr>
         {%endfor%}
         </table>
+         <p> - - - - - - - - - </p>
+	{%include "other.lm"%}
     </BODY>
 </HTML>
