@@ -605,6 +605,111 @@ std::string lemon::get_type(const std::string &str)
 }
 #define br std::string("\n")
 
+inline std::string skip_all(const std::string &str,
+                            const std::string &skip_str)
+{
+    std::string buffer;
+    for (size_t i = 0; i < str.size(); ++i)
+    {
+        char ch = str[i];
+        if (skip_str.find(ch) == std::string::npos)
+        {
+            buffer.push_back(ch);
+        }
+    }
+    return buffer;
+}
+
+//std::map<std::string,std::map<int , int>>
+static inline std::string get_first_type(const std::string &str)
+{
+    std::string buffer;
+
+    for (size_t i = 0; i < str.size(); i++)
+    {
+        char ch = str[i];
+        if(ch == '<')
+        {
+            if(skip_all(buffer," \r\t\n") != "std::map")
+            {
+                throw syntax_error("not find std::map ");
+            }
+            buffer.clear();
+        }
+        else if(ch == ',')
+        {
+            break;
+        }
+        else
+        {
+            if(ch == ' ' && buffer.empty())
+            {
+                continue;
+            }
+            else if(ch == ' ' && i+1 < str.size() && str[i+1] == ',')
+            {
+                continue;
+            }
+            buffer.push_back(ch);
+        }
+    }
+    return buffer;
+}
+//std::map<std::string,std::map<int , int>>
+static inline std::string get_second_type(const std::string &str)
+{
+    std::string buffer;
+    int count = 0;
+    int flag = false;
+
+    for (size_t i = 0; i < str.size(); i++)
+    {
+        char ch = str[i];
+        if(ch == '<')
+        {
+            count++;
+            if(count == 1)
+            {
+                if(skip_all(buffer," \r\t\n") != "std::map")
+                {
+                    throw syntax_error("not find std::map ");
+                }
+                buffer.clear();
+                continue;
+            }
+            buffer.push_back(ch);
+        }
+        else if(ch == ',')
+        {
+            if(!flag)
+            {
+                buffer.clear();
+                flag = true;
+            }
+            else
+                buffer.push_back(ch);
+        }
+        else if(ch == '>')
+        {
+            buffer.push_back(ch);
+            count --;
+
+            if(count ==0)
+            {
+                 break;
+            }
+        }
+        else
+        {
+            if(ch == ' ' && buffer.empty())
+            {
+                continue;
+            }
+            buffer.push_back(ch);
+        }
+    }
+    return buffer;
+}
 static inline std::string get_next_type(const std::string &str)
 {
     std::string buffer;
@@ -635,26 +740,110 @@ static inline std::string get_next_type(const std::string &str)
         }
         else
         {
+            if(ch == ' ' && buffer.empty())
+            {
+                continue;
+            }
+            else if(ch == ' ' && i+1 < str.size() && str[i+1] == ',')
+            {
+                continue;
+            }
             buffer.push_back(ch);
         }
     }
     return buffer;
 }
 
-
-inline std::string skip_all(const std::string &str,
-                            const std::string &skip_str)
+static inline bool check_map(const std::string &str)
 {
     std::string buffer;
-    for (size_t i = 0; i < str.size(); ++i)
+    int count = 0;
+    int flag = false;
+
+    for (size_t i = 0; i < str.size(); i++)
     {
         char ch = str[i];
-        if (skip_str.find(ch) == std::string::npos)
+        if(ch == '<')
+        {
+            count++;
+            if(count == 1)
+            {
+                if(skip_all(buffer," \r\t\n") == "std::map")
+                {
+                    return true;
+                }
+                buffer.clear();
+                continue;
+            }
+            buffer.push_back(ch);
+        }
+        else
         {
             buffer.push_back(ch);
         }
     }
-    return buffer;
+    return false;
+}
+
+static inline bool check_vector(const std::string &str)
+{
+    std::string buffer;
+    int count = 0;
+    int flag = false;
+
+    for (size_t i = 0; i < str.size(); i++)
+    {
+        char ch = str[i];
+        if(ch == '<')
+        {
+            count++;
+            if(count == 1)
+            {
+                if(skip_all(buffer," \r\t\n") == "std::vector")
+                {
+                    return true;
+                }
+                buffer.clear();
+                continue;
+            }
+            buffer.push_back(ch);
+        }
+        else
+        {
+            buffer.push_back(ch);
+        }
+    }
+    return false;
+}
+static inline bool check_list(const std::string &str)
+{
+    std::string buffer;
+    int count = 0;
+    int flag = false;
+
+    for (size_t i = 0; i < str.size(); i++)
+    {
+        char ch = str[i];
+        if(ch == '<')
+        {
+            count++;
+            if(count == 1)
+            {
+                if(skip_all(buffer," \r\t\n") == "std::list")
+                {
+                    return true;
+                }
+                buffer.clear();
+                continue;
+            }
+            buffer.push_back(ch);
+        }
+        else
+        {
+            buffer.push_back(ch);
+        }
+    }
+    return false;
 }
 
 int tab_;
