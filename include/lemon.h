@@ -1,7 +1,8 @@
 #pragma once
+#include <set>
 #include <string>
 #include <vector>
-
+#include <fstream>
 class lemon
 {
 private:
@@ -15,10 +16,15 @@ private:
             e_$n,              // \n
             e_eof,             // end of file
             e_less,            //  <
+            e_le,              //  <= less than or equal to
             e_comment_begin,   //  <!--
             e_sub,             //  -
             e_comment_end,     //  -->
             e_gt,              //  >
+            e_ge,              //  >=
+            e_eq,              //  ==
+            e_neq,             //  !=
+
             e_open_brace,      //  {
             e_open_block,      //  {%
             e_open_variable,   //  {{
@@ -27,6 +33,7 @@ private:
             e_close_block,     //  %}}
             e_close_variable,  //  }}
             e_forward_slash,   //  /
+            e_pipeline,        //  |
             e_ampersand,       //  &
             e_if,              //  if
             e_else,            //  else,
@@ -34,6 +41,7 @@ private:
             e_endif,           //  endif
             e_for,             //  for
             e_in,              //  in
+            e_empty,           //  empty
             e_endfor,          //  endfor
             e_and,             //  end 
             e_not,             //  not
@@ -47,6 +55,11 @@ private:
             e_std_map,         //  std::map 
             e_std_set,         //  std::set
 
+            //filters
+
+            e_length,          //  length filter
+
+            //
             e_char,
             e_unsigned_char,
             e_short,
@@ -68,8 +81,10 @@ private:
             e_quote,           //  '
             e_open_paren,      //  (
             e_close_paren,     //  )
-            e_eq,              //  =
+            e_assign,          //  =
             e_identifier,
+            e_not_op,           // !
+
         } type_t;
 
         type_t type_;
@@ -151,7 +166,7 @@ private:
 
     void move_buffer(int offset);
 
-    std::string read_line();
+    void read_line();
 public:
     lemon();
     bool parse_template(const std::string &file_path);
@@ -165,11 +180,14 @@ private:
     std::string get_code();
     field::type get_field_type(const std::string &type);
     std::string gen_bool_code(const std::string &item);
+    void init_filter();
+    bool check_filter(const std::string &name);
     std::string gen_if_code();
     std::string parse_if();
     std::string get_for_items();
     std::string gen_for_code();
     std::string parse_for();
+    std::string parse_variable();
     std::string parse_html();
     void parse_template();
     std::string get_container_str();
@@ -177,6 +195,10 @@ private:
     field parse_param();
     std::string get_iterator();
     void parse_interface();
+    void pop_for_item();
+    void add_for_item(const std::string &item);
+    std::string get_for_item();
+
 private:
     struct stack
     {
@@ -187,7 +209,7 @@ private:
     std::vector<int> stack_size_;
 
     token_t token_;
-    acl::ifstream file_;
+    std::ifstream file_;
     std::string current_line_;
     std::string line_buffer_;
     int line_;
@@ -199,4 +221,7 @@ private:
     int iterators_;
 
     std::string file_path_;
+
+    std::set<std::string> filters_;
+    std::vector<std::string> for_items_;
 };

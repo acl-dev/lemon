@@ -1,5 +1,2 @@
 #pragma once
-namespace lm
-{
-    std::string hello(const std::string &hello, const std::string &name, const std::vector<std::vector<std::string> > &table);
-}
+std::string hello(const std::string &hello, const std::string &name, std::vector<std::vector<std::string> > &table);

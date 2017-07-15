@@ -23,5 +23,5 @@ int main()
     colum.push_back("world 5");
     table.push_back(colum);
 
-    std::cout << lm::hello("hello world"," akzi",table) << std::endl;
+    std::cout << hello("hello world"," akzi",table) << std::endl;
 }

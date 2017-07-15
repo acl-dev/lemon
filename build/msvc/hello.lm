@@ -1,0 +1,34 @@
+<!--std::string hello(const std::string &hello,const std::string &name, std::vector<std::map<std::string, std::string> > &table)-->
+<HTML>
+    <HEAD>
+        <META NAME="GENERATOR" Content="Microsoft Visual Studio">
+            <TITLE></TITLE>
+    </HEAD>
+    <BODY>
+        hello {{hello|length|length}}
+        {%if hello|length >= 0 and name %}
+            {{hello}}:{{name}}
+        {%endif%}
+		{%if hello|length == 0 or name %}
+            {{hello}}:{{name}}
+        {%endif%}
+        <table>
+        {%for items in table%}
+            <tr>
+                {%for k,v in items%}
+                <td>
+                    hello : {{hello}}
+                    name : {{name|length}}
+                    key : {{k}}
+					value : {{v}}
+                </td>
+				{%empty%}
+				<p>- - - - - empty - - - - - </p>
+                {%endfor%}
+            </tr>
+		 {%empty%}
+		   <p>- - - - - empty - - - - - </p>
+        {%endfor%}
+        </table>
+    </BODY>
+</HTML>
