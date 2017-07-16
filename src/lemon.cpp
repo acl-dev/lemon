@@ -79,7 +79,7 @@ bool lemon::parse_cpp_header(const std::string &file_path)
         return false;
     try
     {
-        parse_object();
+        parse_cpp_header();
     }
     catch (std::exception &e)
     {
@@ -234,6 +234,11 @@ lemon::token_t lemon::curr_token()
 {
     return lexer_->token_;
 }
+void lemon::clear_line_buffer()
+{
+    lexer_->line_buffer_.clear();
+}
+
 lemon::token_t lemon::get_next_token(const std::string &skip_str)
 {
 
@@ -347,6 +352,59 @@ lemon::token_t lemon::get_next_token(const std::string &skip_str)
     else if (str == "/")
     {
         t.type_ = token_t::e_forward_slash;
+        if(get_string(1) == "/")
+        {
+            move_buffer(1);
+            t.type_ = token_t::e_cpp_comment;
+        }
+        else if(get_string(1) == "*")
+        {
+            move_buffer(1);
+            t.type_ = token_t::e_cpp_comment_begin;
+        }
+    }
+    else if(str == "*")
+    {
+        t.type_ = token_t::e_asterisk;
+        if (get_string(1) == "/")
+        {
+            move_buffer(1);
+            t.type_ = token_t::e_cpp_comment_end;
+        }
+
+    }
+    else if(str == "class")
+    {
+        t.type_ = token_t::e_class;
+    }
+    else if(str == "struct")
+    {
+        t.type_ = token_t::e_struct;
+
+    }
+    else if(str == "public")
+    {
+        t.type_ = token_t::e_public;
+    }
+    else if(str == "private")
+    {
+        t.type_ = token_t::e_private;
+    }
+    else if(str == "protected")
+    {
+        t.type_ = token_t::e_protected;
+    }
+    else if(str == "inline")
+    {
+        t.type_ = token_t::e_inline;
+    }
+    else if(str == "virtual")
+    {
+        t.type_ = token_t::e_virtual;
+    }
+    else if(str == "bool")
+    {
+        t.type_ = token_t::e_bool;
     }
     else if (str == "%")
     {
@@ -463,6 +521,64 @@ lemon::token_t lemon::get_next_token(const std::string &skip_str)
             move_buffer(1);
             t.type_ = token_t::e_double_colon;
         }
+    }
+    else if(str == "unsigned")
+    {
+        token_t t = get_next_token();
+        eof_assert(t);
+        if(t.type_ == token_t::e_int)
+        {
+            t.type_ = token_t::e_unsigned_int;
+            t.str_ = "unsigned int";
+        }
+        else if(t.type_ == token_t::e_char)
+        {
+            t.type_ = token_t::e_unsigned_char;
+            t.str_ = "unsigned short";
+        }
+        else if(t.type_ == token_t::e_short)
+        {
+            t.type_ = token_t::e_long;
+            t.str_ = "unsigned long";
+        }
+        else if(t.type_ == token_t::e_long_long)
+        {
+            t.type_ = token_t::e_unsigned_long_long;
+            t.str_ = "unsigned long long";
+        }
+        else
+            push_back(t);
+    }
+    else if(str == "int")
+    {
+        t.type_ = token_t::e_int;
+    }
+    else if(str == "short")
+    {
+        t.type_ = token_t::e_short;
+    }
+    else if (str == "char")
+    {
+        t.type_ = token_t::e_char;
+    }
+    else if(str == "long")
+    {
+        token_t t = get_next_token();
+        if(t.type_ == token_t::e_long)
+        {
+            t.type_ = token_t::e_long_long;
+            t.str_ = "long long";
+        }
+        else
+            push_back(t);
+    }
+    else if(str == "float")
+    {
+        t.type_ = token_t::e_float;
+    }
+    else if(str == "double")
+    {
+        t.type_ = token_t::e_double;
     }
     else if (str == "std")
     {
@@ -676,9 +792,9 @@ lemon::field lemon::parse_param()
     else if(t.type_ == token_t::e_std_vector ||
             t.type_ == token_t::e_std_list)
     {
-        f.type_ = field::e_vector;
+        f.type_ = field::e_std_vector;
         if(t.type_ == token_t::e_std_list)
-            f.type_ = field::e_list;
+            f.type_ = field::e_std_list;
 
         token_t t = get_next_token();
         eof_assert(t);
@@ -1037,8 +1153,48 @@ static inline std::vector<std::string>
         tokens.push_back(token);
     return tokens;
 }
-lemon::field::type 
-    lemon::get_field_type(const std::string &type)
+lemon::field::type lemon::get_field_type(const token_t& token)
+{
+    switch (token.type_)
+    {
+        case token_t::e_void:
+            return field::e_void;
+        case token_t::e_char:
+            return field::e_char;
+        case token_t::e_unsigned_char:
+            return field::e_unsigned_char;
+        case token_t::e_short:
+            return field::e_short;
+        case token_t::e_unsigned_shot:
+            return field::e_unsigned_shot;
+        case token_t::e_int:
+            return field::e_int;
+        case token_t::e_unsigned_int:
+            return field::e_unsigned_int;
+        case token_t::e_long:
+            return field::e_long;
+        case token_t::e_unsigned_long:
+            return field::e_unsigned_long;
+        case token_t::e_long_long:
+            return field::e_long_long;
+        case token_t::e_unsigned_long_long:
+            return field::e_unsigned_long_long;
+        case token_t::e_std_set:
+            return field::e_std_set;
+        case token_t::e_std_map:
+            return field::e_std_map;
+        case token_t::e_std_list:
+            return field::e_std_list;
+        case token_t::e_std_string:
+            return field::e_std_string;
+        case token_t::e_acl_string:
+            return field::e_acl_string;
+        default:
+            throw syntax_error("unknown type");
+    }
+    return field::e_void;
+}
+lemon::field::type lemon::get_field_type(const std::string &type)
 {
     std::vector<std::string> tokens = split(type," \r\n\t<,>");
     if (tokens.empty())
@@ -1050,11 +1206,11 @@ lemon::field::type
     }
     else if (tokens[0] == "std::vector")
     {
-        return field::e_vector;
+        return field::e_std_vector;
     }
     else if (tokens[0] == "std::list")
     {
-        return field::e_list;
+        return field::e_std_list;
     }
     else if (tokens[0] == "int")
     {
@@ -1079,9 +1235,9 @@ std::string lemon::gen_bool_code(const std::string &item)
 {
     std::string item_type = get_type(item);
     field::type type = get_field_type(item_type);
-    if (type == field::e_vector ||
-        type == field::e_list ||
-        type == field::e_map||
+    if (type == field::e_std_vector ||
+        type == field::e_std_list ||
+        type == field::e_std_map||
         type == field::e_std_string)
     {
         return "!"+item + ".empty()";
@@ -1401,14 +1557,14 @@ std::string lemon::parse_variable()
     return code;
 }
 //{% include "includes/nav.html" %}
-std::string lemon::parse_include()
+std::string lemon::get_include_filepath()
 {
     token_t t = get_next_token();
     eof_assert(t);
     std::string file_path;
 
     if(t.type_ == token_t::e_double_quote||
-            t.type_ == token_t::e_quote)
+       t.type_ == token_t::e_quote)
     {
         do
         {
@@ -1427,13 +1583,15 @@ std::string lemon::parse_include()
 
         }while (true);
     }
-    lexer_ = new lexer;
-    lexer_->line_ = 0;
-    lexer_->file_ = new std::ifstream;
-    lexer_->file_->open(file_path.c_str());
-    if(!lexer_->file_->good())
-        throw syntax_error("open file error "+file_path);
-    lexer_->file_path_ = file_path;
+    return file_path;
+}
+std::string lemon::parse_html_include()
+{
+    std::string file_path = get_include_filepath();
+
+    lexer_ = new_lexer(file_path);
+    if(!lexer_)
+        throw std::runtime_error("new lexer error");
     lexers_.push_back(lexer_);
 
     push_status(token_t::e_include);
@@ -1602,7 +1760,7 @@ std::string lemon::parse_open_block()
     eof_assert(t);
     if(t.type_ == token_t::e_include)
     {
-        code += parse_include();
+        code += parse_html_include();
     }
     else if (t.type_ == token_t::e_for)
     {
@@ -1838,7 +1996,287 @@ void lemon::parse_template()
     file.write(code.c_str(), code.size());
 }
 /////////////////////////////////////////////////////////////////////////////
-void lemon::parse_object()
+bool lemon::check_file_done(const std::string &file_name)
 {
+    for (size_t i = 0; i < analyzed_files_.size(); ++i)
+    {
+        if(analyzed_files_[i] == file_name)
+            return true;
+    }
+    return false;
+}
+//{%include filename%}
+void lemon::parse_cpp_include()
+{
+    std::string file_path = get_include_filepath();
+    lexer_ = new_lexer(file_path);
+    if(!lexer_)
+        throw std::runtime_error("new lexer error");
+    lexers_.push_back(lexer_);
+    parse_cpp_header();
+    delete lexer_->file_;
+    delete lexer_;
+    lexer_ = lexers_.back();
+}
+void lemon::parse_cpp_header()
+{
+    do
+    {
+        token_t t = get_next_token();
+        if(t.type_ == token_t::e_eof)
+            return;
+        if(t.type_ == token_t::e_cpp_comment)
+        {
+            t = get_next_token();
+            if(t.type_ != token_t::e_open_block)
+            {
+                clear_line_buffer();
+                continue;
+            }
+            t = get_next_token();
+            if(t.type_ == token_t::e_include)
+                return parse_cpp_include();
+        }
+        else if(t.type_ == token_t::e_cpp_comment_begin)
+        {
+            skip_cpp_comment();
+        }
+        else if(t.type_ == token_t::e_struct ||
+                t.type_ == token_t::e_class)
+        {
+            parse_class(t.type_ == token_t::e_struct);
+        }
 
+
+    }while(true);
+}
+token_t lemon::get_next_token(bool auto_skip_comment)
+{
+    if(!auto_skip_comment)
+        return get_next_token();
+    token_t t;
+    do
+    {
+        t = get_next_token();
+        if(t.type_ == token_t::e_cpp_comment)
+        {
+            clear_line_buffer();
+            continue;
+        }
+        else if(t.type_ == token_t::e_cpp_comment_begin)
+            while(get_next_token().type_ != token_t::e_cpp_comment_end);
+        else
+            break;
+    }while(true);
+    return t;
+}
+
+lemon::fields_t lemon::get_variable(const std::string &name,
+                                    const namespaces_t&nspaces)
+{
+    for (size_t i = 0; i < classes_.size(); ++i)
+    {
+        class_t &c = classes_[i];
+        if(c.name_ == name)
+        {
+            if(c.namespaces_.empty() ||
+                    c.namespaces_ == nspaces)
+                return c.variables_;
+        }
+    }
+    throw syntax_error("not find class "+ name);
+    return fields_t();
+}
+lemon::fields_t lemon::get_parent_variables(bool is_struct)
+{
+    std::vector<std::string> parents;
+    std::vector<lemon::field> variables;
+
+    do
+    {
+        token_t t = get_next_token(true);
+
+        if(t.type_ == token_t::e_comma)
+            t = get_next_token(true);
+
+        if(t.type_ == token_t::e_public || is_struct)
+        {
+            namespaces_t namespaces;
+
+            token_t t1 = t;
+            if(!is_struct)
+                t1 = get_next_token(true);
+            token_t t2 = get_next_token(true);
+            do
+            {
+                //public namespace::
+                if(t2.type_ == token_t::e_double_colon)
+                {
+                    namespaces.push_back(t1.str_);
+                    t1= get_next_token(true);
+                    t2 = get_next_token(true);
+                    continue;
+                }
+                else
+                {
+                    push_back(t2);
+                    if(namespaces.empty())
+                        namespaces = namespaces_;
+                    fields_t fields = get_variable(t1.str_, namespaces_);
+                    variables.insert(variables.end(),
+                                     fields.begin(),fields.end());
+                    break;
+                }
+
+            }while(true);
+        }
+        else if(t.type_ == token_t::e_private||
+                t.type_ == token_t::e_protected)
+        {
+            while(true)
+            {
+                t = get_next_token();
+                if(t.type_ == token_t::e_open_brace||
+                        t.type_ == token_t::e_comma)
+                    break;
+            }
+        }
+        else if(t.type_ == token_t::e_open_brace)
+        {
+            break;
+        }
+    }while(true);
+
+    return variables;
+}
+bool lemon::skip_to_public()
+{
+    int count = 1;
+    do
+    {
+        token_t t = get_next_token(true);
+        if(t.type_ == token_t::e_open_brace)
+            count ++;
+        else if(t.type_ == token_t::e_close_brace)
+            count --;
+        if(count == 0)
+            break;
+        if(t.type_ == token_t::e_public)
+        {
+            if(get_next_token(true).type_ != token_t::e_colon)
+                throw syntax_error("not find :");
+            break;
+        }
+    }while(true);
+
+    if(count == 1)
+        return true;
+    else if(count == 0)
+        return false;
+    else
+        throw syntax_error("not match { and }");
+
+    return false;
+}
+lemon::field lemon::parse_field_type()
+{
+    field f;
+
+    token_t t = get_next_token(true);
+    eof_assert(t);
+
+    if(t.type_ == token_t::e_std_vector||
+            t.type_ == token_t::e_std_list||
+            t.type_ == token_t::e_std_map ||
+            t.type_ == token_t::e_std_set)
+    {
+        f.type_ = get_field_type(t);
+        f.type_str_.append(t.str_);
+        t = get_next_token(true);
+        if(t.type_ != token_t::e_less)
+            throw syntax_error("not find <");
+        f.type_str_.append(t.str_);
+        int count = 1;
+        do
+        {
+            t = get_next_token(true);
+            if(t.type_ == token_t::e_less)
+                count++;
+            else if(t.type_ == token_t::e_gt)
+                count --;
+            f.type_str_.append(t.str_);
+            if(count == 0)
+                break;
+        }while(true);
+    }
+    else if(t.type_ == token_t::e_bool||
+            t.type_ == token_t::e_char||
+            t.type_ == token_t::e_unsigned_char||
+            t.type_ == token_t::e_short||
+            t.type_ == token_t::e_unsigned_shot||
+            t.type_ == token_t::e_int||
+            t.type_ == token_t::e_unsigned_int||
+            t.type_ == token_t::e_long||
+            t.type_ == token_t::e_unsigned_long||
+            t.type_ == token_t::e_long_long||
+            t.type_ == token_t::e_unsigned_long_long)
+    {
+        f.type_ = get_field_type(t);
+        f.type_str_.append(t.str_);
+    }
+
+
+}
+void lemon::parse_class(bool is_struct)
+{
+    class_t obj;
+    token_t class_name = get_next_token(true);
+    token_t t2 = get_next_token(true);
+    // class name ;
+    if(t2.type_ == token_t::e_semicolon)
+        return;
+    else if(t2.type_ == token_t::e_colon)
+    {
+        obj.variables_ = get_parent_variables(is_struct);
+    }
+
+    if(!is_struct)
+    {
+        if(!skip_to_public())
+            return;
+    }
+    do
+    {
+        token_t t = get_next_token(true);
+        if(t.type_ == token_t::e_protected||
+                t.type_ == token_t::e_private)
+        {
+            if(!skip_to_public())
+                break;
+            else
+                continue;
+        }
+        else if(t.type_ == token_t::e_inline||
+                 t.type_ == token_t::e_virtual||
+                 t.type_ == token_t::e_void)
+        {
+            skip_function();
+        }
+        else if(t.type_ == token_t::e_identifier)
+        {
+            if(t.str_ == class_name.str_)
+                skip_function();
+        }
+
+        push_back(t);
+
+        field f = parse_field_type();
+
+    }while(true);
+
+
+}
+void lemon::skip_cpp_comment()
+{
+    while(get_next_token().type_ != token_t::e_cpp_comment_end);
 }

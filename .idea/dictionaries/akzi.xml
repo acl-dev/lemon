@@ -1,8 +1,12 @@
 <component name="ProjectDictionaryState">
   <dictionary name="akzi">
     <words>
+      <w>autoescape</w>
       <w>elif</w>
+      <w>endautoescape</w>
+      <w>endblock</w>
       <w>endfor</w>
+      <w>skipstr</w>
       <w>std::string</w>
     </words>
   </dictionary>

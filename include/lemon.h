@@ -80,11 +80,17 @@ private:
 
             //c++ things
             e_struct,
+            e_class,
             e_public,
-            e_protect,
+            e_protected,
             e_private,
+            e_virtual,
+            e_override,
+            e_inline,
+            e_operator,
 
             //
+            e_bool,
             e_char,
             e_unsigned_char,
             e_short,
@@ -95,6 +101,8 @@ private:
             e_unsigned_long,
             e_long_long,
             e_unsigned_long_long,
+            e_float,
+            e_double,
 
             e_void,            //  void
             e_const,           //  const
@@ -122,6 +130,7 @@ private:
         }
         typedef enum type
         {
+            e_void,
             e_char,
             e_unsigned_char,
             e_short,
@@ -139,10 +148,10 @@ private:
             e_float,
             e_double,
 
-            e_list,
-            e_vector,
-            e_map,
-            e_set,
+            e_std_list,
+            e_std_vector,
+            e_std_map,
+            e_std_set,
             e_object
         }type_t;
 
@@ -156,12 +165,12 @@ private:
         std::string type_str_;
     };
 
-    struct object
+    struct class_t
     {
         std::string file_path_;
         std::string name_;
         std::vector<std::string> namespaces_;
-        std::vector<field> members_;
+        std::vector<field> variables_;
     };
     struct interface_t
     {
@@ -219,6 +228,7 @@ private:
     void print_lexer_status();
     void assert_not_eof(const token_t &t);
     token_t get_next_token(const std::string &skipstr=" \r\n\t");
+    void clear_line_buffer();
     token_t curr_token();
     void push_status(token_t::type_t type);
     void push_auto_escape(bool escape);
@@ -233,6 +243,7 @@ private:
     void push_stack_size(int size);
     void push_back(const token_t &value);
     field::type get_field_type(const std::string &type);
+    field::type get_field_type(const token_t &token);
     void init_filter();
     bool check_filter(const std::string &name);
     std::string gen_bool_code(const std::string &item);
@@ -243,7 +254,8 @@ private:
     std::string get_for_items();
     std::string parse_for();
     std::string parse_variable();
-    std::string parse_include();
+    std::string get_include_filepath();
+    std::string parse_html_include();
     std::string get_default_string();
     std::string parse_block();
     std::string parse_extends();
@@ -260,10 +272,23 @@ private:
 
 
     ///c++
+    typedef std::vector<field> fields_t;
+    typedef std::vector<std::string> namespaces_t;
+
     field parse_return();
     field parse_param();
     void parse_interface();
-    void parse_object();
+    void parse_class(bool is_struct);
+    void parse_cpp_header();
+    void parse_cpp_include();
+    bool check_file_done(const std::string &file_name);
+    void skip_cpp_comment();
+    token_t get_next_token(bool auto_skip_comment);
+    fields_t get_variable(const std::string &name, const namespaces_t&nspaces);
+    fields_t get_parent_variables(bool is_struct);
+    bool skip_to_public();
+    field parse_field_type();
+    void skip_function();
 private:
     std::vector<block>  blocks_;
     std::vector<lexer*> lexers_;
@@ -273,7 +298,7 @@ private:
     std::vector<int> stack_size_;
 
     std::list<token_t> tokens_;
-    std::vector<object> objects_;
+    std::vector<class_t> classes_;
     std::vector<token_t::type_t> status_;
 
     template_t template_;
@@ -282,4 +307,7 @@ private:
 
     std::set<std::string> filters_;
     std::vector<std::string> for_items_;
+    ///c++
+    std::vector<std::string> analyzed_files_;
+    namespaces_t namespaces_;
 };

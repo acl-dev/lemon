@@ -1,0 +1,35 @@
+<HTML>
+    <HEAD>
+        <META NAME="GENERATOR" Content="Microsoft Visual Studio">
+            <TITLE></TITLE>
+    </HEAD>
+    <BODY>
+        {%block test%} ---- {%endblock%}
+        hello {{hello|default:"hello is empty!!!!"}}
+        {%if name|length > 0 %}
+            name:{{name|safe}}
+        {%endif%}
+        <p> - - - - - - - - - </p>
+        {%autoescape off%}
+        <table>
+           {%for items in table%}
+              <tr>
+                {%for item in items%}
+                  <td>
+                  {%block hello%} ---- {%endblock%}
+                  {% autoescape on %}
+                  {%block name%} ----  {%endblock%}
+                  {% endautoescape%}
+                  {%block item%} ----  {%endblock%}
+                  </td>
+               {%endfor%}
+           {%include "other.lm"%}
+             </tr>
+           {%endfor%}
+         </table>
+         {%endautoescape%}
+         <p>{{hello}}{{name}}</p>
+         <p> - - - - - - - - - </p>
+	{%include "other.lm"%}
+    </BODY>
+</HTML>

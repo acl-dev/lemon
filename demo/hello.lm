@@ -1,30 +1,6 @@
-<!--std::string hello(const std::string &hello,const std::string &name, std::vector<std::vector<std::string> > &table)-->
-<HTML>
-    <HEAD>
-        <META NAME="GENERATOR" Content="Microsoft Visual Studio">
-            <TITLE></TITLE>
-    </HEAD>
-    <BODY>
-        hello {{hello}}
-        {%if name|length > 0 %}
-            name:{{name}}
-        {%endif%}
-        <p> - - - - - - - - - </p>
-        <table>
-        {%for items in table%}
-            <tr>
-                {%for item in items%}
-                <td>
-                    hello:{{hello}}
-                    name: {{name}}
-                    item: {{item}}
-                </td>
-                {%endfor%}
-                {%include "other.lm"%}
-            </tr>
-        {%endfor%}
-        </table>
-         <p> - - - - - - - - - </p>
-	{%include "other.lm"%}
-    </BODY>
-</HTML>
+<!--std::string hello(const std::string &hello,const std::string &name, const std::vector<std::vector<std::string> > &table)-->
+{%extends base.lm%}
+{%block hello%} hello:{{hello}} {%endblock%}
+{%block name%} name: {{name}} {%endblock%}
+{%block item%} item: {{item}} {%endblock%}
+
