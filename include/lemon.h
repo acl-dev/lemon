@@ -17,9 +17,9 @@ private:
             e_eof,             // end of file
             e_less,            //  <
             e_le,              //  <= less than or equal to
-            e_comment_begin,   //  <!--
+            e_html_comment_begin,//  <!--
             e_sub,             //  -
-            e_comment_end,     //  -->
+            e_html_comment_end,//  -->
             e_gt,              //  >
             e_ge,              //  >=
             e_eq,              //  ==
@@ -33,6 +33,9 @@ private:
             e_close_block,     //  %}}
             e_close_variable,  //  }}
             e_forward_slash,   //  /
+            e_cpp_comment,     //  //
+            e_cpp_comment_begin,// /*
+            e_cpp_comment_end, //  */
             e_pipeline,        //  |
             e_ampersand,       //  &
             e_on,              //  on
@@ -55,20 +58,31 @@ private:
             e_autoescape,      //  autoescape
             e_endautoescape,   //  endautoescape
 
-            e_void,            //  void
-            e_const,           //  const
-            e_std_string,      //  std::list
-            e_acl_string,      //  acl::string
-            e_std_vector,      //  std::vector
-            e_std_list,        //  std::list
-            e_std_map,         //  std::map 
-            e_std_set,         //  std::set
-
             //filters
-
             e_length,          //  length filter
             e_safe,
             e_default,
+
+            e_asterisk,        // *
+            e_colon,           // :
+            e_double_colon,    // ::
+
+            e_comma,           //  ,
+            e_semicolon,       //  ;
+            e_backtick,        //  `
+            e_double_quote,    //  "
+            e_quote,           //  '
+            e_open_paren,      //  (
+            e_close_paren,     //  )
+            e_assign,          //  =
+            e_identifier,
+            e_not_op,          // !
+
+            //c++ things
+            e_struct,
+            e_public,
+            e_protect,
+            e_private,
 
             //
             e_char,
@@ -82,19 +96,15 @@ private:
             e_long_long,
             e_unsigned_long_long,
 
-            e_colon,           // :
-            e_double_colon,    // ::
+            e_void,            //  void
+            e_const,           //  const
+            e_std_string,      //  std::list
+            e_acl_string,      //  acl::string
+            e_std_vector,      //  std::vector
+            e_std_list,        //  std::list
+            e_std_map,         //  std::map
+            e_std_set,         //  std::set
 
-            e_comma,           //  ,
-            e_semicolon,       //  ;
-            e_backtick,        //  `
-            e_double_quote,    //  "
-            e_quote,           //  '
-            e_open_paren,      //  (
-            e_close_paren,     //  )
-            e_assign,          //  =
-            e_identifier,
-            e_not_op,           // !
 
         } type_t;
 
@@ -102,9 +112,6 @@ private:
         std::string str_;
         int line_;
     };
-    struct entry;
-    struct field;
-
     struct field
     {
 
@@ -136,7 +143,7 @@ private:
             e_vector,
             e_map,
             e_set,
-            e_entry
+            e_object
         }type_t;
 
         type_t type_;
@@ -149,8 +156,9 @@ private:
         std::string type_str_;
     };
 
-    struct entry
+    struct object
     {
+        std::string file_path_;
         std::string name_;
         std::vector<std::string> namespaces_;
         std::vector<field> members_;
@@ -202,51 +210,60 @@ private:
 public:
     lemon();
     ~lemon();
+    bool parse_cpp_header(const std::string &file_path);
     bool parse_template(const std::string &file_path);
 
 private:
+    lexer *new_lexer(const std::string &file_path);
+    int line();
+    void print_lexer_status();
     void assert_not_eof(const token_t &t);
     token_t get_next_token(const std::string &skipstr=" \r\n\t");
     token_t curr_token();
-    int line();
+    void push_status(token_t::type_t type);
+    void push_auto_escape(bool escape);
+    void pop_auto_escape();
+    bool auto_escape();
+    token_t::type_t pop_status();
+    token_t::type_t get_status();
+    std::string get_status_str();
+    std::string parse_open_block();
     void pop_stack();
     void push_stack(const std::string &name, const std::string &type);
     void push_stack_size(int size);
     void push_back(const token_t &value);
-    std::string get_type(const std::string &name);
-    std::string get_code();
     field::type get_field_type(const std::string &type);
-    std::string gen_bool_code(const std::string &item);
     void init_filter();
     bool check_filter(const std::string &name);
+    std::string gen_bool_code(const std::string &item);
+    std::string get_type(const std::string &name);
+    std::string get_code();
     std::string gen_if_code();
     std::string parse_if();
     std::string get_for_items();
     std::string parse_for();
     std::string parse_variable();
     std::string parse_include();
-    block get_block(const std::string &name);
-    bool block_exist(const std::string &name);
+    std::string get_default_string();
     std::string parse_block();
     std::string parse_extends();
     std::string parse_html();
+    block get_block(const std::string &name);
+    bool block_exist(const std::string &name);
     void parse_template();
-    std::string get_container_str();
-    field parse_return();
-    field parse_param();
+
     std::string get_iterator();
-    void parse_interface();
+
     void pop_for_item();
     void add_for_item(const std::string &item);
     std::string get_for_item();
-    void push_status(token_t::type_t type);
-    token_t::type_t pop_status();
-    token_t::type_t get_status();
-    std::string get_status_str();
-    std::string parse_open_block();
-    void push_auto_escape(bool escape);
-    void pop_auto_escape();
-    bool auto_escape();
+
+
+    ///c++
+    field parse_return();
+    field parse_param();
+    void parse_interface();
+    void parse_object();
 private:
     std::vector<block>  blocks_;
     std::vector<lexer*> lexers_;
@@ -256,7 +273,7 @@ private:
     std::vector<int> stack_size_;
 
     std::list<token_t> tokens_;
-    std::vector<entry> entrys_;
+    std::vector<object> objects_;
     std::vector<token_t::type_t> status_;
 
     template_t template_;

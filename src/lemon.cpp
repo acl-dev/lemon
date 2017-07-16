@@ -69,24 +69,59 @@ lemon::~lemon()
 void lemon::init_filter()
 {
     filters_.insert("length");
+    filters_.insert("default");
+    filters_.insert("safe");
+}
+bool lemon::parse_cpp_header(const std::string &file_path)
+{
+    lexer_ = new_lexer(file_path);
+    if(!lexer_)
+        return false;
+    try
+    {
+        parse_object();
+    }
+    catch (std::exception &e)
+    {
+        std::cout << e.what() << std::endl;
+        print_lexer_status();
+    }
+
+}
+
+lemon::lexer *lemon::new_lexer(const std::string &file_path)
+{
+    lexer *l = new lexer;
+
+    l->line_ = 0;
+    l->file_ = new std::ifstream;
+    l->file_->clear();
+    l->file_->open(file_path.c_str());
+    l->file_path_ = file_path;
+
+    if (!l->file_->good())
+    {
+        std::cout << "open file error. "<<file_path << std::endl;
+        delete l->file_;
+        delete l;
+        return NULL;
+    }
+    return l;
+}
+void lemon::print_lexer_status()
+{
+    std::cout << "file:" << lexer_->file_path_<< std::endl;
+    std::cout << "line:" << lexer_->line_ << std::endl;
+    std::cout<< lexer_->current_line_ << std::endl;
+    std::cout <<">>>> "<<lexer_->line_buffer_ << std::endl;
 }
 bool lemon::parse_template(const std::string &file_path)
 {
-    lexer_ = new lexer;
-
-    lexer_->line_ = 0;
-    lexer_->file_ = new std::ifstream;
-    lexer_->file_->clear();
-    lexer_->file_->open(file_path.c_str());
-    lexer_->file_path_ = file_path;
-
-    if (!lexer_->file_->good())
+    lexer_ = new_lexer(file_path);
+    if(!lexer_)
     {
-        delete lexer_->file_;
-        delete lexer_;
         return false;
     }
-
     try
     {
         lexers_.push_back(lexer_);
@@ -95,11 +130,7 @@ bool lemon::parse_template(const std::string &file_path)
     catch (const std::exception& e)
     {
         std::cout << e.what() << std::endl;
-        std::cout << "file:" << lexer_->file_path_<< std::endl;
-        std::cout << "line:" << lexer_->line_ << std::endl;
-        std::cout<< lexer_->current_line_ << std::endl;
-        std::cout <<">>>> "<<lexer_->line_buffer_ << std::endl;
-
+        print_lexer_status();
         return false;
     }
     return true;
@@ -260,7 +291,7 @@ lemon::token_t lemon::get_next_token(const std::string &skip_str)
         {
             move_buffer(3);
             t.str_ = "<!--";
-            t.type_ = token_t::e_comment_begin;
+            t.type_ = token_t::e_html_comment_begin;
         }
     }
     else if (str == "-")
@@ -270,7 +301,7 @@ lemon::token_t lemon::get_next_token(const std::string &skip_str)
         {
             move_buffer(2);
             t.str_ = "-->";
-            t.type_ = token_t::e_comment_end;
+            t.type_ = token_t::e_html_comment_end;
         }
     }
     else if (str == ">")
@@ -560,41 +591,7 @@ lemon::token_t lemon::get_next_token(const std::string &skip_str)
     lexer_->token_ = t;
     return t;
 }
-std::string lemon::get_container_str()
-{
-    std::string code;
-   
-    int count = 0;
-    for (size_t i = 0; i < lexer_->line_buffer_.size(); ++i)
-    {
-        char ch = lexer_->line_buffer_[i];
 
-        if (ch == '<')
-        {
-            code.push_back(ch);
-            count++;
-        }
-        else if(ch == '>')
-        {
-            if (count == 0)
-            {
-                return code;
-            }
-            else
-            {
-                code.push_back(ch);
-                count--;
-                if (count == 0)
-                    return code;
-            }
-        }
-        else
-        {
-            code.push_back(ch);
-        }
-    }
-    return  code;
-}
 static inline std::string get_param_str(const std::string &str)
 {
     int count = 0;
@@ -745,13 +742,13 @@ void lemon::parse_interface()
         {
             t = get_next_token();
             eof_assert(t);
-            if (t.type_ != token_t::e_comment_end)
+            if (t.type_ != token_t::e_html_comment_end)
                 throw syntax_error("not find -->");
             return;
         }
-            
     }
 }
+
 std::string lemon::get_iterator()
 {
     char buffer[32];
@@ -919,93 +916,39 @@ static inline std::string get_next_type(const std::string &str)
 static inline bool check_map(const std::string &str)
 {
     std::string buffer;
-    int count = 0;
-    int flag = false;
 
-    for (size_t i = 0; i < str.size(); i++)
+    size_t pos = str.find_first_of('<');
+    if(pos != std::string::npos)
     {
-        char ch = str[i];
-        if(ch == '<')
-        {
-            count++;
-            if(count == 1)
-            {
-                if(skip_all(buffer," \r\t\n") == "std::map")
-                {
-                    return true;
-                }
-                buffer.clear();
-                continue;
-            }
-            buffer.push_back(ch);
-        }
-        else
-        {
-            buffer.push_back(ch);
-        }
+        buffer = str.substr(0,pos);
+        return skip_all(buffer," \r\t\n") == "std::map";
     }
-    return false;
+    return skip_all(str," \r\t\n") == "std::map";
 }
 
 static inline bool check_vector(const std::string &str)
 {
     std::string buffer;
-    int count = 0;
-    int flag = false;
 
-    for (size_t i = 0; i < str.size(); i++)
+    size_t pos = str.find_first_of('<');
+    if(pos != std::string::npos)
     {
-        char ch = str[i];
-        if(ch == '<')
-        {
-            count++;
-            if(count == 1)
-            {
-                if(skip_all(buffer," \r\t\n") == "std::vector")
-                {
-                    return true;
-                }
-                buffer.clear();
-                continue;
-            }
-            buffer.push_back(ch);
-        }
-        else
-        {
-            buffer.push_back(ch);
-        }
+        buffer = str.substr(0,pos);
+        return skip_all(buffer," \r\t\n") == "std::vector";
     }
-    return false;
+    return skip_all(str," \r\t\n") == "std::vector";
 }
 static inline bool check_list(const std::string &str)
 {
     std::string buffer;
-    int count = 0;
-    int flag = false;
 
-    for (size_t i = 0; i < str.size(); i++)
+    size_t pos = str.find_first_of('<');
+    if(pos != std::string::npos)
     {
-        char ch = str[i];
-        if(ch == '<')
-        {
-            count++;
-            if(count == 1)
-            {
-                if(skip_all(buffer," \r\t\n") == "std::list")
-                {
-                    return true;
-                }
-                buffer.clear();
-                continue;
-            }
-            buffer.push_back(ch);
-        }
-        else
-        {
-            buffer.push_back(ch);
-        }
+        buffer = str.substr(0,pos);
+        return skip_all(buffer," \r\t\n") == "std::list";
     }
-    return false;
+    return skip_all(str," \r\t\n") == "std::list";
 }
 
 int g_tab;
@@ -1386,10 +1329,29 @@ std::string lemon::parse_for()
 
     return code;
 }
+std::string lemon::get_default_string()
+{
+    std::string buffer;
+    token_t t = get_next_token();
+    if(t.type_ != token_t::e_colon)
+        throw syntax_error("not find : ");
+    t = get_next_token();
+    if(t.type_ != token_t::e_double_quote)
+        throw syntax_error("not find \" ");
+    do
+    {
+        t = get_next_token("");
+        if(t.type_ != token_t::e_double_quote)
+            buffer.append(t.str_);
+        else
+            break;
+    }while (true);
+    return buffer;
+}
 std::string lemon::parse_variable()
 {
     std::string code = tab() + "code += ";
-    
+    bool safe = false;
     token_t t = get_next_token();
     eof_assert(t);
     std::string item = t.str_;
@@ -1402,10 +1364,24 @@ std::string lemon::parse_variable()
     {
         do
         {
-            std::string filter = get_next_token().str_;
-            if (!check_filter(filter))
-                throw syntax_error("unknown filter " + filter);
-            item = "lm::$"+filter + "(" + item + ")";
+            t = get_next_token();
+            //{{ data|default:"string" }}
+            if(t.type_ == token_t::e_default)
+            {
+                if(auto_escape())
+                    item = "lm::$escape("+item+")";
+                std::string str = get_default_string();
+                item = "lm::$"+t.str_ + "(" + item + ", \""+str+"\")";
+                safe = true;
+            }
+            else if(t.type_ == token_t::e_safe)
+                safe = true;
+            else
+            {
+                if(!check_filter(t.str_))
+                    throw syntax_error("not found filter :" + t.str_);
+                item = "lm::$"+t.str_ + "(" + item + ")";
+            }
             t = get_next_token();
             eof_assert(t);
             if (t.type_ == token_t::e_pipeline)
@@ -1417,7 +1393,7 @@ std::string lemon::parse_variable()
     }
     else if (t.type_ != token_t::e_close_variable)
         throw syntax_error("unknown "+ t.str_);
-    if(auto_escape())
+    if(!safe && auto_escape())
         item = "lm::$escape("+item+")";
     code += item;
     code += ";" + br;
@@ -1701,8 +1677,11 @@ std::string lemon::parse_open_block()
     }
     else if(t.type_ == token_t::e_endautoescape)
     {
-        if(get_status() != token_t::e_autoescape)
+        if(pop_status() != token_t::e_autoescape)
             throw syntax_error("status error. "+get_status_str());
+        if(get_next_token().type_ != token_t::e_close_block)
+            throw syntax_error("not find %}");
+        pop_auto_escape();
     }
     return code;
 }
@@ -1823,7 +1802,7 @@ void lemon::parse_template()
 
     token_t t = get_next_token();
     eof_assert(t);
-    if (t.type_ != token_t::e_comment_begin)
+    if (t.type_ != token_t::e_html_comment_begin)
         throw syntax_error("error not find template interface.");
     template_.interface_.str_ = get_string("-->");
     template_.name_ = lexer_->file_path_;
@@ -1857,4 +1836,9 @@ void lemon::parse_template()
     file_path += ".cpp";
     file.open(file_path.c_str(), std::ios::out);
     file.write(code.c_str(), code.size());
+}
+/////////////////////////////////////////////////////////////////////////////
+void lemon::parse_object()
+{
+
 }
