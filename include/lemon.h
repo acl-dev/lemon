@@ -35,6 +35,8 @@ private:
             e_forward_slash,   //  /
             e_pipeline,        //  |
             e_ampersand,       //  &
+            e_on,              //  on
+            e_off,             //  off
             e_if,              //  if
             e_else,            //  else,
             e_elif,            //  else if
@@ -50,6 +52,8 @@ private:
             e_block,           //  block
             e_end_block,       //  end_block
             e_extends,         //  extends
+            e_autoescape,      //  autoescape
+            e_endautoescape,   //  endautoescape
 
             e_void,            //  void
             e_const,           //  const
@@ -63,6 +67,8 @@ private:
             //filters
 
             e_length,          //  length filter
+            e_safe,
+            e_default,
 
             //
             e_char,
@@ -173,7 +179,7 @@ private:
     struct block
     {
         std::string name_;
-        size_t      offset_;
+        long        offset_;
         std::string file_path_;
         std::string current_line_;
         std::string line_buffer_;
@@ -202,6 +208,7 @@ private:
     void assert_not_eof(const token_t &t);
     token_t get_next_token(const std::string &skipstr=" \r\n\t");
     token_t curr_token();
+    int line();
     void pop_stack();
     void push_stack(const std::string &name, const std::string &type);
     void push_stack_size(int size);
@@ -237,11 +244,14 @@ private:
     token_t::type_t get_status();
     std::string get_status_str();
     std::string parse_open_block();
+    void push_auto_escape(bool escape);
+    void pop_auto_escape();
+    bool auto_escape();
 private:
     std::vector<block>  blocks_;
     std::vector<lexer*> lexers_;
     lexer *lexer_;
-
+    std::vector<bool> auto_escape_;
     std::vector<stack> stack_;
     std::vector<int> stack_size_;
 
@@ -251,6 +261,7 @@ private:
 
     template_t template_;
     int iterators_;
+    bool is_base_;
 
     std::set<std::string> filters_;
     std::vector<std::string> for_items_;
