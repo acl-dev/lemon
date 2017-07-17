@@ -63,6 +63,7 @@ private:
             e_safe,
             e_default,
 
+            e_dot,             // .
             e_asterisk,        // *
             e_colon,           // :
             e_double_colon,    // ::
@@ -88,6 +89,7 @@ private:
             e_override,
             e_inline,
             e_operator,
+            e_namespace,
 
             //
             e_bool,
@@ -152,17 +154,16 @@ private:
             e_std_vector,
             e_std_map,
             e_std_set,
-            e_object
+            e_class
         }type_t;
 
         type_t type_;
 
         int line_;
-
         std::string name_;
-        
         std::string str_;
         std::string type_str_;
+        std::vector<std::string> namespaces_;
     };
 
     struct class_t
@@ -249,10 +250,10 @@ private:
     std::string gen_bool_code(const std::string &item);
     std::string get_type(const std::string &name);
     std::string get_code();
-    std::string gen_if_code();
     std::string parse_if();
     std::string get_for_items();
     std::string parse_for();
+    std::string get_variable();
     std::string parse_variable();
     std::string get_include_filepath();
     std::string parse_html_include();
@@ -270,7 +271,6 @@ private:
     void add_for_item(const std::string &item);
     std::string get_for_item();
 
-
     ///c++
     typedef std::vector<field> fields_t;
     typedef std::vector<std::string> namespaces_t;
@@ -284,9 +284,11 @@ private:
     bool check_file_done(const std::string &file_name);
     void skip_cpp_comment();
     token_t get_next_token(bool auto_skip_comment);
-    fields_t get_variable(const std::string &name, const namespaces_t&nspaces);
+    fields_t get_variable(const std::string &name, const namespaces_t&nps);
+    bool check_class_exist(const std::string &name, const namespaces_t&nps);
     fields_t get_parent_variables(bool is_struct);
     bool skip_to_public();
+    namespaces_t get_namespaces();
     field parse_field_type();
     void skip_function();
 private:
@@ -294,7 +296,7 @@ private:
     std::vector<lexer*> lexers_;
     lexer *lexer_;
     std::vector<bool> auto_escape_;
-    std::vector<stack> stack_;
+    std::vector<field> stack_;
     std::vector<int> stack_size_;
 
     std::list<token_t> tokens_;
@@ -310,4 +312,5 @@ private:
     ///c++
     std::vector<std::string> analyzed_files_;
     namespaces_t namespaces_;
+    std::vector<namespaces_t> namespaces_;
 };
