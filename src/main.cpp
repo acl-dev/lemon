@@ -7,7 +7,8 @@ int main()
 {
     lemon lm;
 
-    lm.parse_template("hello.lm");
+    if(lm.parse_cpp_header("hello.h"))
+        lm.parse_template("hello.lm");
 
     return 0;
 }

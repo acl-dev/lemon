@@ -254,6 +254,7 @@ private:
     std::string get_for_items();
     std::string parse_for();
     std::string get_variable();
+    std::string to_string(const std::string &name,const std::string &type);
     std::string parse_variable();
     std::string get_include_filepath();
     std::string parse_html_include();
@@ -274,7 +275,7 @@ private:
     ///c++
     typedef std::vector<field> fields_t;
     typedef std::vector<std::string> namespaces_t;
-
+    std::string to_string(const namespaces_t &namespaces);
     field parse_return();
     field parse_param();
     void parse_interface();
@@ -291,6 +292,7 @@ private:
     namespaces_t get_namespaces();
     field parse_field_type();
     void skip_function();
+    class_t *get_class(const std::string &name, const namespaces_t &nsp);
 private:
     std::vector<block>  blocks_;
     std::vector<lexer*> lexers_;
@@ -311,6 +313,5 @@ private:
     std::vector<std::string> for_items_;
     ///c++
     std::vector<std::string> analyzed_files_;
-    namespaces_t namespaces_;
     std::vector<namespaces_t> namespaces_;
 };
