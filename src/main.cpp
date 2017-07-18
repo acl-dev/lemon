@@ -10,5 +10,6 @@ int main()
     if(lm.parse_cpp_header("hello.h"))
         lm.parse_template("hello.lm");
 
+    getchar();
     return 0;
 }

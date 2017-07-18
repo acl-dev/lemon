@@ -210,7 +210,7 @@ private:
         std::string type_;
     };
 
-    std::string next_token(const std::string &delimiters);
+    std::string next_token(const std::string &delimiters, const std::string &skips);
     std::string get_string(size_t len);
     std::string get_string(const std::string &delimiters);
 

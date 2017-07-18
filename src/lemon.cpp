@@ -215,15 +215,22 @@ std::string lemon::get_string(size_t len)
 
     return std::string (lexer_->line_buffer_.c_str(),len);
 }
-std::string lemon::next_token(const std::string &delimiters)
+std::string lemon::next_token(const std::string &delimiters, const std::string &skips)
 {
     std::string buffer;
 
-    if(lexer_->line_buffer_.empty())
-        read_line();
-
-    if (lexer_->line_buffer_.empty())
-        return buffer;
+    do
+    {
+        if (lexer_->line_buffer_.empty())
+            read_line();
+        if (lexer_->line_buffer_.empty())
+            return buffer;
+        if(skips.size())
+            skip(lexer_->line_buffer_,skips);
+        if (!lexer_->line_buffer_.empty())
+            break;
+    } while (true);
+    
 
     for (size_t i = 0; i < lexer_->line_buffer_.size(); i++)
     {
@@ -284,7 +291,7 @@ lemon::token_t lemon::get_next_token(const std::string &skip_str)
         {
             skip(lexer_->line_buffer_, skip_str);
         }
-        str = next_token(delimiters);
+        str = next_token(delimiters,skip_str);
         t.str_ = str;
     }
 
@@ -961,7 +968,7 @@ std::string lemon::get_type(const std::string &name)
         throw syntax_error("not find variable "+name);
     
     if (tokens.size() == 1)
-        return type;
+        return to_string(namespaces)+type;
 
     class_t *cls = get_class(type, namespaces);
     if(!cls)
@@ -2177,6 +2184,7 @@ void lemon::parse_template()
     if (t.type_ != token_t::e_html_comment_begin)
         throw syntax_error("error not find template interface.");
     template_.interface_.str_ = get_string("-->");
+    skip(template_.interface_.str_," ");
     template_.name_ = lexer_->file_path_;
     parse_interface();
 
@@ -2463,13 +2471,57 @@ lemon::field lemon::parse_field_type()
         do
         {
             t = get_next_token(true);
-            if(t.type_ == token_t::e_less)
+            if (t.type_ == token_t::e_less)
+            {
                 count++;
-            else if(t.type_ == token_t::e_gt)
-                count --;
-            f.type_str_.append(t.str_);
-            if(count == 0)
-                break;
+                f.type_str_.append(t.str_);
+            }
+            else if (t.type_ == token_t::e_gt)
+            {
+                count--;
+                f.type_str_.append(t.str_);
+                if (count == 0)
+                    break;
+            }
+            else if (t.type_ == token_t::e_identifier)
+            {
+                token_t t2 = get_next_token(true);
+                if (t2.type_ != token_t::e_double_colon)
+                {
+                    push_back(t2);
+                    if (!check_class_exist(t.str_, namespaces_.back()))
+                        throw syntax_error("not find class " + t.str_);
+                    t.str_ = to_string(namespaces_.back()) + t.str_;
+                    f.type_str_.append(t.str_);
+                }
+                else
+                {
+                    push_back(t);
+                    push_back(t2);
+                    namespaces_t namespaces = get_namespaces();
+                    t = get_next_token(true);
+                    if (!check_class_exist(t.str_, namespaces))
+                    {
+                        namespaces_t ns = namespaces_.back();
+                        ns.insert(ns.end(), namespaces.begin(), namespaces.end());
+                        if (!check_class_exist(t.str_, ns))
+                            throw syntax_error("not find class "+ 
+                                               to_string(namespaces)+t.str_);
+
+                        t.str_ = to_string(ns) + t.str_;
+                        f.type_str_.append(t.str_);
+                    }
+                    else
+                    {
+                        t.str_ = to_string(namespaces) + t.str_;
+                        f.type_str_.append(t.str_);
+                    }
+                }
+            }
+            else
+            {
+                f.type_str_.append(t.str_);
+            }
         }while(true);
     }
     else if(t.type_ == token_t::e_bool||
@@ -2519,7 +2571,7 @@ void lemon::skip_function()
                 return;
         }
         if (t.type_ == token_t::e_open_brace)
-            count;
+            count++;
         else if (t.type_ == token_t::e_close_brace)
         {
             count--;
@@ -2571,8 +2623,11 @@ void lemon::parse_class(bool is_struct)
         else if(t.type_ == token_t::e_identifier)
         {
             //construct function
-            if(t.str_ == cls.name_)
+            if (t.str_ == cls.name_)
+            {
                 skip_function();
+                continue;
+            }
         }
         else if(t.type_ == token_t::e_close_brace)
         {
@@ -2594,6 +2649,10 @@ void lemon::parse_class(bool is_struct)
         {
             cls.variables_.push_back(f);
         }
+        else
+        {
+            throw syntax_error("not find ;");
+        }
     }while(true);
 
     cls.namespaces_ = namespaces_.back();
@@ -2605,19 +2664,19 @@ void lemon::skip_cpp_comment()
     while(get_next_token().type_ != token_t::e_cpp_comment_end);
 }
 
-lemon::class_t *
+lemon::class_t * 
     lemon::get_class(const std::string &name,
                      const namespaces_t &nsp)
 {
     for (size_t i = 0; i < classes_.size(); ++i)
     {
-        if(classes_[i].name_ == name)
+        if (classes_[i].name_ == name)
         {
             if (!!classes_[i].namespaces_.size() &&
-                    classes_[i].namespaces_== nsp)
+                classes_[i].namespaces_ == nsp)
                 return &classes_[i];
-            else if(classes_[i].namespaces_.empty() &&
-                    nsp.empty())
+            else if (classes_[i].namespaces_.empty() &&
+                     nsp.empty())
                 return &classes_[i];
         }
     }
